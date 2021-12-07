@@ -1,0 +1,25 @@
+<Application>
+	<Manufacturer>Microsoft Corporation</Manufacturer>
+	<ProductName>Remote help Test</ProductName>
+	<ProductVersion>3.8.0.6</ProductVersion>
+	<ProductCode>{04963637-6AC0-48BC-AEA8-2074763EF7D5}</ProductCode>
+	<Description>Remote help is an application that works with Intune and enables your information and front-line workers to get assistance when needed over a remote connection. With this connection, your support staff can remote connect to the user's device.</Description>
+	<Installer>Remotehelp</Installer>
+	<InstallerType>exe</InstallerType>
+	<Install>/install /quiet acceptTerms=Yes</Install>
+	<Path></Path>
+	<Uninstaller></Uninstaller>
+	<Uninstall></Uninstall>
+	<UninstallerPath></UninstallerPath>
+	<DetectionRuleRegistry></DetectionRuleRegistry>
+	<DetectionRuleValue></DetectionRuleValue>
+	<DetectionRuleVersion></DetectionRuleVersion>
+	<SCCM>False</SCCM>
+	<Intune>True</Intune>
+	<Categories></Categories>
+	<Group>All Users</Group>
+	<RequiredGroup>All Devices</RequiredGroup>
+	<PilotGroup>AAD - Intune Application Testing</PilotGroup>
+	<Owner>TROHAV</Owner>
+	<ID>100001</ID>
+</Application>

@@ -1,0 +1,139 @@
+$ID = Read-Host -Prompt "App ID"
+
+Clear-Host
+CD "\\br-fs-01.xenappblog.com\xa\Win32App\$ID"
+
+If (!(Test-Path -Path .\Config.xml)) { Write-Warning "Configuration File Missing" }
+
+$MyConfigFileloc = (".\Config.xml")
+[xml]$MyConfigFile = (Get-Content $MyConfigFileLoc)
+
+$TentantName = "xenappblog.com"
+$Manufacturer = $MyConfigFile.Application.Manufacturer
+$ProductName = $MyConfigFile.Application.ProductName
+$ProductVersion = $MyConfigFile.Application.ProductVersion
+$ProductCode = $MyConfigFile.Application.ProductCode
+$Description = $MyConfigFile.Application.Description
+$Installer = $MyConfigFile.Application.Installer
+$InstallerType = $MyConfigFile.Application.InstallerType
+$Uninstaller = $MyConfigFile.Application.Uninstaller
+$UninstallerPath = $MyConfigFile.Application.UninstallerPath
+$DetectionRuleRegistry = $MyConfigFile.Application.DetectionRuleRegistry
+$DetectionRuleValue = $MyConfigFile.Application.DetectionRuleValue
+$DetectionRuleVersion = $MyConfigFile.Application.DetectionRuleVersion
+$Owner = $MyConfigFile.Application.Owner
+
+$Content = "\\br-fs-01.xenappblog.com\xa\Win32App\" + "$ID"
+$PKGSRC = "\\br-fs-01.xenappblog.com\xa\Win32App\" + "$ID"
+$PKGSRCMedia = "$PKGSRC\" + "Media"
+$PKGSRCPKG = "$PKGSRC\" + "PKG"
+$PKGSRCIntune = "$PKGSRC\" + "Intune"
+
+$Source = "$Installer" + "." + "$InstallerType"
+$LogApp = "${env:SystemRoot}" + "\Temp\$ProductName $ProductVersion.log"
+$Install = $MyConfigFile.Application.Install
+$Uninstall = $MyConfigFile.Application.Uninstall
+$Path = $MyConfigFile.Application.Path
+$SCCM = $MyConfigFile.Application.SCCM
+$Intune = $MyConfigFile.Application.Intune
+$PilotGroup = $MyConfigFile.Application.PilotGroup
+$RequiredGroup = $MyConfigFile.Application.RequiredGroup
+
+$MST = Get-ChildItem -Path $PKGSRCPKG\*.mst
+$MST = $MST.Name
+
+If ($InstallerType -eq "msi" -and $MST -eq $null) { $Install = "msiexec /i `"$Source`" $Install ALLUSERS=1 REBOOT=ReallySuppress /norestart /qn /L*V `"$LogApp`"" }
+If ($InstallerType -eq "msi" -and $MST -ne $null) { $Install = "msiexec /i `"$Source`" $Install ALLUSERS=1 REBOOT=ReallySuppress TRANSFORMS=`"$MST`" /norestart /qn /L*V `"$LogApp`"" }
+If ($InstallerType -eq "msi") { $Uninstall = "msiexec /x $ProductCode /qn" }
+If ($InstallerType -eq "msi") { $Repair = "msiexec /f $ProductCode /qn" }
+
+If ($InstallerType -eq "exe") { $Install = "`"$Source`" $Install" }
+If ($InstallerType -eq "exe") { $Uninstall = "`"$UninstallerPath\$Uninstaller.$InstallerType`" $Uninstall" }
+
+If ($InstallerType -eq "ps1") { $Install = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -File `"$Source`"" }
+If ($InstallerType -eq "ps1") { $Uninstall = "powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -NoProfile -File `"$Uninstaller.$InstallerType`"" }
+
+Write-Verbose "Checking Configuration" -Verbose
+If (!(Test-Path -Path $PKGSRC\Icon.png)) { Write-Warning "PNG Icon File Missing" }
+If (!(Test-Path -Path $PKGSRCPKG\$Source)) { Write-Warning "$Source Missing" }
+
+# Intune
+If ($Intune -eq "True") { 
+
+    Write-Verbose "Preparing Intune Package" -Verbose 
+      
+    Write-Verbose "Downloading Latest Intune WinAppUtility" -Verbose 
+    [uri]$IntuneWinUtilPath = "https://github.com/microsoft/Microsoft-Win32-Content-Prep-Tool/raw/master/IntuneWinAppUtil.exe"
+    $IntuneWinUtilName = $IntuneWinUtilPath.Segments[$IntuneWinUtilPath.Segments.Count-1]
+    Invoke-WebRequest -Uri $IntuneWinUtilPath -OutFile "$($env:TEMP)\$($IntuneWinUtilName)"
+    
+    If (!(Test-Path -Path $PKGSRCIntune)) {New-Item -ItemType directory -Path $PKGSRCIntune | Out-Null}
+    If (!(Test-Path -Path $env:Temp\$ProductName)) {New-Item -ItemType directory -Path $env:Temp\$ProductName | Out-Null}
+
+    Write-Verbose "Copying $ProductName $ProductVersion to Temp Folder" -Verbose 
+    Copy-Item $PKGSRCPKG\* -Destination $env:Temp\$ProductName -Force -Recurse | Out-Null
+    Copy-Item $PKGSRC\Icon.png -Destination $env:Temp\$ProductName -Force -Recurse | Out-Null
+
+    Write-Verbose "Building Itune Package" -Verbose 
+    CD $env:TEMP
+    .\IntuneWinAppUtil.exe -c "$env:Temp\$ProductName" -s $Source -o $env:Temp\$ProductName -q
+    
+    Write-Verbose "Installing Modules" -Verbose
+    [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
+    $ProgressPreference = 'SilentlyContinue'
+    Set-PSRepository -Name 'PSGallery' -InstallationPolicy Trusted  | Out-Null
+    
+    if (!(Get-Module -ListAvailable -Name NuGet)) { Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null }
+    if (!(Get-Module -ListAvailable -Name IntuneWin32App)) { Install-Module IntuneWin32App -Force | Import-Module IntuneWin32App | Out-Null }
+    if (!(Get-Module -ListAvailable -Name AzureAD)) { Install-Module AzureAD | Import-Module AzureAD | Out-Null }
+    
+    Connect-MSIntuneGraph -TenantID $TentantName
+
+    $IntuneFile = $Source -replace "$InstallerType","intunewin"
+    $IntuneWinFile = "$env:Temp\$ProductName\$IntuneFile"
+
+    $DisplayName = $ProductName + " " + $ProductVersion
+
+    If (!( $ProductCode -eq [string]::Empty )) {
+        
+        $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $ProductCode # -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $ProductVersion        
+        $Uninstall = "msiexec /x $ProductCode /qn"
+    }
+    
+    else
+    
+    {
+
+    # Create Registry detection rule
+    $DetectionRule = New-IntuneWin32AppDetectionRuleRegistry -KeyPath $DetectionRuleRegistry -ValueName $DetectionRuleValue -StringComparison -StringComparisonOperator equal -StringComparisonValue $DetectionRuleVersion
+
+    }
+            
+    # Create custom return code
+    $ReturnCode = New-IntuneWin32AppReturnCode -ReturnCode 1337 -Type "retry"
+
+    # Convert image file to icon
+    $ImageFile = "$env:Temp\$ProductName\Icon.png"
+    $Icon = New-IntuneWin32AppIcon -FilePath $ImageFile
+
+    # Add new Win32 app
+    $Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName $DisplayName -Description "$Description" -AppVersion $ProductVersion -Publisher $Manufacturer -Owner $Owner -Notes "$ID - Created by PowerShell" -InstallCommandLine $Install -UninstallCommandLine $Uninstall -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -ReturnCode $ReturnCode -Icon $Icon -Verbose
+
+    Write-Verbose "Available for entrolled devices member of : $PilotGroup" -Verbose
+    Connect-AzureAD
+    $AADGroup = "$PilotGroup"
+    $AADGroupID = (Get-AzureADGroup -filter "DisplayName eq '$AADGroup'").ObjectID
+
+    Add-IntuneWin32AppAssignmentGroup -Include -ID $Win32App.id -GroupID $AADGroupID -Intent "available" -Notification "showAll" -Verbose
+    
+    Write-Verbose "Cleaning Up" -Verbose
+    Copy-Item $IntuneWinFile -Destination $PKGSRCIntune -Force -Recurse | Out-Null
+    Remove-Item "$env:Temp\$ProductName" -Force -Recurse | Out-Null
+
+}
+else { 
+}    
+
+
+
+

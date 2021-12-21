@@ -1,4 +1,4 @@
-Function Convert-Path {
+ Function Convert-Path {
     <#
         .SYNOPSIS
         Replaces paths with environment variables
@@ -34,7 +34,7 @@ $XML = "$Path\Applications.xml"
 $XMLURL = "https://raw.githubusercontent.com/haavarstein/Applications/master/Applications.xml"
 $PatchMyPC = "$Path\Definitions.xml"
 $PatchMyPCURL = "https://patchmypc.com/freeupdater/definitions/definitions.xml"
-$TeamsWebHook = "XXXXXXXXXXXXXXXXXXXXX"
+$TeamsWebHook = "https://xenappblog.webhook.office.com/webhookb2/5b224351-8e14-42ac-9852-93a58e0b158d@681d484d-388f-4da7-a72b-91f4a58253de/IncomingWebhook/b3f7a55835274b188b773e2bd7990e90/121e06e7-eed2-4958-9007-c51914d0c77f"
 
 If (!(Test-Path -Path $Icons)) { 
     Write-Verbose "Copying Icons Files to Local Drive" -Verbose
@@ -82,6 +82,7 @@ $URL = $MyDefinitionFile.Data.ARPData.$("$Product" + "Download")
 $InstallerType = $App.Installer
 $UnattendedArgs = $App.Install
 $UnattendedArgs = $UnattendedArgs.Replace("/i ","")
+$LogApp = "${env:SystemRoot}" + "\Temp\$Product $Version.log"
 
 $IntuneCustomer = $App.Assignments.Customer
 $IntuneGroup = $App.Assignments.Group
@@ -156,9 +157,11 @@ If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architectur
     }
 
     If ($App.Installer -eq "msi") {
-        
-        $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
-        $Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName Evergreen-$DisplayName -Description "$($App.Description)" -Developer "Automation Framework" -Owner "Trond Eirik Haavarstein" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -Icon $Icon -CompanyPortalFeaturedApp $true
+        $ProductCode = $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductCode
+        $InstallCommandLine = "msiexec /i `"$Source`" ALLUSERS=1 REBOOT=ReallySuppress /norestart /qn /L*V `"$LogApp`""
+        $UninstallCommandLine = "msiexec /x $ProductCode /qn"
+        $DetectionRule = New-IntuneWin32AppDetectionRuleMSI -ProductCode $ProductCode -ProductVersionOperator "greaterThanOrEqual" -ProductVersion $IntuneWinMetaData.ApplicationInfo.MsiInfo.MsiProductVersion
+        $Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName Evergreen-$DisplayName -Description "$($App.Description)" -Developer "Automation Framework" -Owner "Trond Eirik Haavarstein" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Icon $Icon -CompanyPortalFeaturedApp $true
 
     } 
 
@@ -205,4 +208,4 @@ Start-Sleep -s 30
 }
 
 $EndDTM = (Get-Date)
-Write-Verbose "Elapsed Time: $(($EndDTM-$StartDTM).TotalMinutes) Minutes" -Verbose
+Write-Verbose "Elapsed Time: $(($EndDTM-$StartDTM).TotalMinutes) Minutes" -Verbose 

@@ -34,7 +34,7 @@ $XML = "$Path\Applications.xml"
 $XMLURL = "https://raw.githubusercontent.com/haavarstein/Applications/master/Applications.xml"
 $PatchMyPC = "$Path\Definitions.xml"
 $PatchMyPCURL = "https://patchmypc.com/freeupdater/definitions/definitions.xml"
-$TeamsWebHook = "https://xenappblog.webhook.office.com/webhookb2/5b224351-8e14-42ac-9852-93a58e0b158d@681d484d-388f-4da7-a72b-91f4a58253de/IncomingWebhook/b3f7a55835274b188b773e2bd7990e90/121e06e7-eed2-4958-9007-c51914d0c77f"
+$TeamsWebHook = "XXXXXXXXXXXXX"
 
 If (!(Test-Path -Path $Icons)) { 
     Write-Verbose "Copying Icons Files to Local Drive" -Verbose

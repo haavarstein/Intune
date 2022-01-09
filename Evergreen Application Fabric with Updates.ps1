@@ -34,7 +34,7 @@ $XML = "$Path\Applications.xml"
 $XMLURL = "https://raw.githubusercontent.com/haavarstein/Applications/master/Applications.xml"
 $PatchMyPC = "$Path\Definitions.xml"
 $PatchMyPCURL = "https://patchmypc.com/freeupdater/definitions/definitions.xml"
-$TeamsWebHook = "https://xenappblog.webhook.office.com/webhookb2/5b224351-8e14-42ac-9852-93a58e0b158d@681d484d-388f-4da7-a72b-91f4a58253de/IncomingWebhook/b3f7a55835274b188b773e2bd7990e90/121e06e7-eed2-4958-9007-c51914d0c77f"
+$TeamsWebHook = "XXXXXXXXXXXXXXX"
 
 If (!(Test-Path -Path $Icons)) { 
     Write-Verbose "Copying Icons Files to Local Drive" -Verbose
@@ -50,9 +50,9 @@ winget source remove msstore
 
 Write-Verbose "Installing Required PowerShell Modules" -Verbose
 [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
-if (!(Test-Path -Path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget")) { Install-PackageProvider -Name 'Nuget' -ForceBootstrap -IncludeDependencies }
-if (!(Get-Module -ListAvailable -Name Evergreen)) { Install-Module Evergreen -Force | Import-Module Evergreen }
-if (!(Get-Module -ListAvailable -Name IntuneWin32App)) {Install-Module IntuneWin32App -Force | Import-Module IntuneWin32App}
+If (!(Test-Path -Path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget")) { Install-PackageProvider -Name 'Nuget' -ForceBootstrap -IncludeDependencies }
+If (!(Get-Module -ListAvailable -Name Evergreen)) { Install-Module Evergreen -Force | Import-Module Evergreen }
+If (!(Get-Module -ListAvailable -Name IntuneWin32App)) {Install-Module IntuneWin32App -Force | Import-Module IntuneWin32App}
 If (!(Test-Path -Path $Path)) {New-Item -ItemType directory -Path $Path | Out-Null}
 Invoke-WebRequest -UseBasicParsing -Uri $TemplateURL -OutFile $Template
 Invoke-WebRequest -UseBasicParsing -Uri $XMLURL -OutFile $XML
@@ -146,7 +146,7 @@ If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architectur
     $Publisher = $Vendor
 
     # Convert image file to icon
-    if (!(Test-Path -Path $Icons\$Product.png)) { 
+    If (!(Test-Path -Path $Icons\$Product.png)) { 
         $ImageFile = "$Icons\MSI.png"
         $Icon = New-IntuneWin32AppIcon -FilePath $ImageFile
         } 
@@ -166,14 +166,13 @@ If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architectur
 
     } 
 
-     If ($App.Installer -eq "exe") {
+    If ($App.Installer -eq "exe") {
         
         $Script = "$Path\Temp\$Product.ps1"
         "if (Test-Path -Path ""$($App.Path)"")" | Set-Content -Encoding Ascii -Force $Script
         "{ Write-Host 'Found it' }" | Add-Content -Encoding Ascii $Script
 
         $DetectionScriptFile = $Script
-        #$DetectionRule = New-IntuneWin32AppDetectionRuleScript -ScriptFile $DetectionScriptFile -EnforceSignatureCheck $false -RunAs32Bit $false
         $DetectionRule = New-IntuneWin32AppDetectionRuleFile -Version -Path $App.Path -FileOrFolder $App.DetectionFile -Operator "greaterThanOrEqual" -VersionValue $Version
         $InstallCommandLine = $Source + " " + $($App.Install)
         $UninstallCommandLine = $App.Path + "\" +  $($App.Uninstall)
@@ -181,37 +180,21 @@ If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architectur
 
     } 
 
-    #Write-Verbose "Installing $($App.DisplayName) $Version ($Architecture) to get File Version" -Verbose
-    #$UnattendedArgs = "/i $Source ALLUSERS=1 /qb"
-    #(Start-Process msiexec.exe -ArgumentList $UnattendedArgs -Wait -Passthru).ExitCode
-    #$FileVersion = (Get-Command "$InstallerPath\7zG.exe").FileVersionInfo.FileVersion
-    #$FileVersion = $FileVersion -replace ",","."
-
-    #Write-Verbose "File Version is $FileVersion" -Verbose
-
-    #Write-Verbose "Uninstalling $($App.DisplayName) $Version ($Architecture)" -Verbose
-    #$UnattendedArgs = "/x $Source /qb"
-    #(Start-Process msiexec.exe -ArgumentList $UnattendedArgs -Wait -Passthru).ExitCode
-
     # Add assignment for all users
     Add-IntuneWin32AppAssignmentAllUsers -ID $Win32App.id -Intent "available" -Notification "showAll"
 
     # Create Update Package
     $RequirementRule = New-IntuneWin32AppRequirementRuleFile -Version -Path $App.Path -FileOrFolder $App.DetectionFile -Operator lessThan -VersionValue $Version
-    #$RequirementRule = New-IntuneWin32AppRequirementRuleFile -Existence -DetectionType exists -Path $App.Path -FileOrFolder $App.DetectionFile -Check32BitOn64System $false 
-    #$RequirementRule = New-IntuneWin32AppDetectionRuleRegistry -Existence -KeyPath "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall" -ValueName $ProductCode -DetectionType exists
     $Win32App = Add-IntuneWin32App -FilePath $IntuneWinFile -DisplayName Update-Evergreen-$DisplayName -AppVersion $Version -Description "$($App.Description)" -Developer "Automation Framework" -Owner "Trond Eirik Haavarstein" -Publisher $Publisher -InstallExperience "system" -RestartBehavior "suppress" -DetectionRule $DetectionRule -InstallCommandLine $InstallCommandLine -UninstallCommandLine $UninstallCommandLine -Icon $Icon -AdditionalRequirementRule $RequirementRule
 
     # Add assignment for all devices
     Add-IntuneWin32AppAssignmentAllDevices -ID $Win32App.id -Intent "required" -Notification "showAll"
 
-
     Start-Sleep -s 30
 
     # Delete Temp Folder
     Remove-Item -Path $Path\Temp -Confirm:$false -Recurse
-
-    
+   
 
 $body = @"
     {

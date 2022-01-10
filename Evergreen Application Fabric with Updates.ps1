@@ -34,7 +34,7 @@ $XML = "$Path\Applications.xml"
 $XMLURL = "https://raw.githubusercontent.com/haavarstein/Applications/master/Applications.xml"
 $PatchMyPC = "$Path\Definitions.xml"
 $PatchMyPCURL = "https://patchmypc.com/freeupdater/definitions/definitions.xml"
-$TeamsWebHook = "XXXXXXXXXXXXXXX"
+$TeamsWebHook = "XXXXXXXXXXXXX"
 
 If (!(Test-Path -Path $Icons)) { 
     Write-Verbose "Copying Icons Files to Local Drive" -Verbose
@@ -50,9 +50,9 @@ winget source remove msstore
 
 Write-Verbose "Installing Required PowerShell Modules" -Verbose
 [Net.ServicePointManager]::SecurityProtocol = "tls12, tls11, tls"
-If (!(Test-Path -Path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget")) { Install-PackageProvider -Name 'Nuget' -ForceBootstrap -IncludeDependencies }
-If (!(Get-Module -ListAvailable -Name Evergreen)) { Install-Module Evergreen -Force | Import-Module Evergreen }
-If (!(Get-Module -ListAvailable -Name IntuneWin32App)) {Install-Module IntuneWin32App -Force | Import-Module IntuneWin32App}
+if (!(Test-Path -Path "C:\Program Files\PackageManagement\ProviderAssemblies\nuget")) { Install-PackageProvider -Name 'Nuget' -ForceBootstrap -IncludeDependencies }
+if (!(Get-Module -ListAvailable -Name Evergreen)) { Install-Module Evergreen -Force | Import-Module Evergreen }
+if (!(Get-Module -ListAvailable -Name IntuneWin32App)) {Install-Module IntuneWin32App -Force | Import-Module IntuneWin32App}
 If (!(Test-Path -Path $Path)) {New-Item -ItemType directory -Path $Path | Out-Null}
 Invoke-WebRequest -UseBasicParsing -Uri $TemplateURL -OutFile $Template
 Invoke-WebRequest -UseBasicParsing -Uri $XMLURL -OutFile $XML
@@ -100,7 +100,7 @@ CD $Path
 
     } 
 
-    If ($App.Enabled -eq "True" -and $App.PMPC -notlike "True" -and $App.WinGet -notlike "True") {
+    If ($App.Enabled -eq "True" -and $App.PMPC -notlike "True" -and $App.WinGet -notlike "True" -and $App.Private -notlike "True") {
         Write-Verbose "Download Method for $Product is Evergreen" -Verbose
         $Evergreen = Invoke-Expression $App.Evergreen -ErrorAction SilentlyContinue
         $Version = $Evergreen.Version
@@ -121,6 +121,15 @@ CD $Path
         $Source = "$PackageName" + "_" + "$Version" + "_" + "$Architecture" + "." + "$InstallerType"
 
     } 
+
+    If ($App.Enabled -eq "True" -and $App.PMPC -notlike "True" -and $App.WinGet -notlike "True" -and $App.Private -eq "True") {
+        Write-Verbose "Download Method for $Product is Private Repo" -Verbose
+        $Architecture = $App.Architecture
+        $Version = $App.Version
+        $URL = $App.URL
+        $Source = "$PackageName" + "_" + "$Version" + "_" + "$Architecture" + "." + "$InstallerType"
+
+    }
 
 If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architecture" + ".intunewin")") -and $($App.Enabled) -eq "True") { 
              
@@ -146,7 +155,7 @@ If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architectur
     $Publisher = $Vendor
 
     # Convert image file to icon
-    If (!(Test-Path -Path $Icons\$Product.png)) { 
+    if (!(Test-Path -Path $Icons\$Product.png)) { 
         $ImageFile = "$Icons\MSI.png"
         $Icon = New-IntuneWin32AppIcon -FilePath $ImageFile
         } 
@@ -166,7 +175,7 @@ If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architectur
 
     } 
 
-    If ($App.Installer -eq "exe") {
+     If ($App.Installer -eq "exe") {
         
         $Script = "$Path\Temp\$Product.ps1"
         "if (Test-Path -Path ""$($App.Path)"")" | Set-Content -Encoding Ascii -Force $Script
@@ -194,7 +203,8 @@ If (!(Test-Path -Path "$("$PackageName" + "_" + "$Version" + "_" + "$Architectur
 
     # Delete Temp Folder
     Remove-Item -Path $Path\Temp -Confirm:$false -Recurse
-   
+
+    
 
 $body = @"
     {

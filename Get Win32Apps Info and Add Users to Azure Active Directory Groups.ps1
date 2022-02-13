@@ -709,7 +709,8 @@ ForEach($App in $Apps) {
     $Name = $Name -replace " $Version",""
            
     Write-Verbose "Getting Users from $Name - Requirement Rule" -Verbose
-    $Users = Get-DeviceStatusForApp -AppId $AppID | Where-Object { $_.installstate -eq "installed" } | Select-Object userPrincipalName -Unique -ExpandProperty userPrincipalName
+    $Users = Get-DeviceStatusForApp -AppId $AppID | Where-Object { $_.installstate -eq "installed" } | Select-Object userPrincipalName -Unique -ExpandProperty userPrincipalName 
+    $Users = $Users | where { $_ -ne "" }
     $Name = $Name -replace "Update-",""
     $AADGroup = "AAD - SW - $Publisher" + " " + "-" + " " + "$Name"
     $AADGID = Get-AzureADGroup -SearchString $AADGroup
@@ -726,7 +727,6 @@ ForEach($App in $Apps) {
        Add-AzureADGroupMember -ObjectId $AADGID -RefObjectId $ADUserID -ErrorAction SilentlyContinue | Out-Null
     }
 
-    Clear-Variable Exists
     Write-Host
 
 }

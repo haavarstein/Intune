@@ -10,6 +10,16 @@
 		"Type": "programs",
 		"SilentArg": "-u"
 	},{
+	},{
+		"Name": "TeamViewer*",
+		"Version": "*",
+		"Type": "msi",
+	},{
+	},{
+		"Name": "Bluebeam*",
+		"Version": "*",
+		"Type": "msi",
+	},{		
 		"Name": "Corptax USC*",
 		"Version": "*",
 		"Type": "msi"

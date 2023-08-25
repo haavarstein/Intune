@@ -20,7 +20,7 @@
 		"Version": "*",
 		"Type": "msi"
 	},{		
-		"Name": "Corptax USC*",
+		"Name": "Corptax*",
 		"Version": "*",
 		"Type": "msi"
 	}

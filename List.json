@@ -13,12 +13,12 @@
 	},{
 		"Name": "TeamViewer*",
 		"Version": "*",
-		"Type": "msi",
+		"Type": "msi"
 	},{
 	},{
 		"Name": "Bluebeam*",
 		"Version": "*",
-		"Type": "msi",
+		"Type": "msi"
 	},{		
 		"Name": "Corptax USC*",
 		"Version": "*",

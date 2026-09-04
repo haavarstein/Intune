@@ -1,5 +1,6 @@
 # Detection Script Only
 # Remediation script: Enable & Activate Ultimate Performance + Custom Logging
+# Also sets PlatformAoAcOverride = 0 for Modern Standby (S0) laptops
 
 $logPath = "C:\ProgramData\Microsoft\IntuneManagementExtension\Logs"
 $logFile = "$logPath\UltimatePowerPlan_Remediation.log"
@@ -16,8 +17,39 @@ Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Starting Ultimate Perf
 
 $ultimateHiddenGUID = "e9a42b02-d5df-448d-aa00-03f14749eb61"
 $activeScheme = ""
+$regPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Power"
+$regName = "PlatformAoAcOverride"
+$regValue = 0
 
 try {
+    # --- Modern Standby (S0) override ---
+    Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Checking registry value $regPath\$regName"
+
+    if (-not (Test-Path $regPath)) {
+        throw "Registry path not found: $regPath"
+    }
+
+    $currentReg = Get-ItemProperty -Path $regPath -Name $regName -ErrorAction SilentlyContinue
+
+    if ($null -eq $currentReg) {
+        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $regName not present - creating DWORD = $regValue"
+        New-ItemProperty -Path $regPath -Name $regName -PropertyType DWord -Value $regValue -Force | Out-Null
+    }
+    elseif ([int]$currentReg.$regName -ne $regValue) {
+        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $regName currently = $($currentReg.$regName) - updating to $regValue"
+        Set-ItemProperty -Path $regPath -Name $regName -Value $regValue -Type DWord -Force
+    }
+    else {
+        Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] $regName already set to $regValue"
+    }
+
+    $verifyReg = (Get-ItemProperty -Path $regPath -Name $regName).$regName
+    Write-Output "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] Verified $regName = $verifyReg"
+    if ([int]$verifyReg -ne $regValue) {
+        throw "Failed to set $regName to $regValue"
+    }
+
+    # --- Ultimate Performance plan ---
     # Check if Ultimate is already listed
     $listOutput = powercfg /list
     $existingUltimate = $listOutput | Where-Object { $_ -match $ultimateHiddenGUID }

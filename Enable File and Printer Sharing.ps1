@@ -16,7 +16,6 @@ $disableIds = @(
     'ms_rspndr',   # Link-Layer Topology Discovery Responder
     'ms_lltdio',   # Link-Layer Topology Discovery Mapper I/O Driver
     'ms_implat',   # Microsoft Network Adapter Multiplexor Protocol
-    'vms_pp',      # Hyper-V Extensible Virtual Switch
     'npcap'        # Npcap
 )
 
